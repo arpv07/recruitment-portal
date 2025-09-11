@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+spacy
+pdfplumber
+python-docx
+dateparser
+rapidfuzz
+python-multipart
