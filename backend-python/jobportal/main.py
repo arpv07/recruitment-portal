@@ -41,3 +41,4 @@ def read_root():
     Root endpoint for the API.
     """
     return {"message": "Welcome to the Job Portal API with MongoDB!"}
+

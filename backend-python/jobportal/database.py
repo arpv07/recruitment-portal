@@ -50,6 +50,6 @@ def get_database() -> AsyncIOMotorDatabase:
     """
     Dependency function to get the database instance for API endpoints.
     """
-    if not mongodb.db:
+    if mongodb.db is None:
         raise RuntimeError("Database not initialized")
     return mongodb.db

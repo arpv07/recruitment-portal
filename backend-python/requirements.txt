@@ -1,10 +1,11 @@
 fastapi
 uvicorn[standard]
 python-dotenv
-pydantic-settings
+pydantic
 motor
 python-jose[cryptography]
 passlib[bcrypt]
 python-multipart
 pymongo
 os
+bcrypt==4.1.3

@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, EmailStr
 from bson import ObjectId
 from typing import Optional
 from datetime import datetime
+from pydantic import UserBase, UserCreate, User, Token
 
 # This class helps Pydantic work with MongoDB's ObjectId
 class PyObjectId(ObjectId):

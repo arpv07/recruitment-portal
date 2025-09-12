@@ -110,3 +110,5 @@ async def get_job_applications(
     except Exception as e:
         logger.error(f"Error retrieving applications for job {job_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+
