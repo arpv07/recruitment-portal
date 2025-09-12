@@ -5,11 +5,13 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from jobportal.database import connect_to_mongo, close_mongo_connection
 from jobportal.routers import jobs, users
-import os
+from jobportal.config import settings
+import os  # Added import
 import warnings
 
-if not os.getenv("HTTPS_ENABLED"):
-    warnings.warn("Running without HTTPS in production is insecure!")
+# Warn if running in production without SSL
+if settings.ENV == "production":
+    warnings.warn("Ensure HTTPS is configured in production for security!")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

@@ -5,7 +5,6 @@ Loads settings from environment variables defined in a .env file.
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import validator
 from typing import Optional
-import os
 
 class Settings(BaseSettings):
     """
@@ -21,6 +20,9 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     JWT_ISSUER: Optional[str] = None
     JWT_AUDIENCE: Optional[str] = None
+
+    # Environment setting for production warnings
+    ENV: Optional[str] = None
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
