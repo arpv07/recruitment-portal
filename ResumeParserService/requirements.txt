@@ -2,7 +2,9 @@ fastapi
 uvicorn[standard]
 spacy
 pdfplumber
-python-docx
+python-docxuvicorn app:app --host 127.0.0.1 --port 8000 --reload
+
 dateparser
 rapidfuzz
 python-multipart
+PyMuPDF

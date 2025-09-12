@@ -2,9 +2,18 @@ from fastapi import FastAPI, UploadFile, File
 import fitz  # PyMuPDF
 import docx
 from parser import parse_resume
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+origin = "http://localhost:5173"
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[origin],
+    allow_credentials=True,
+    allow_methods=["GET"],
+    allow_headers=["*"]
+)
 def extract_text_from_pdf(file_path):
     text = ""
     with fitz.open(file_path) as doc:

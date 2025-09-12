@@ -65,28 +65,28 @@ def extract_education(text):
     edu_text = text[match.end():]
     # Stop at next section
     edu_text = re.split(r"(Experience|Skills|Projects|Certifications|INTERNSHIP)", edu_text, re.I)[0]
-
+ 
     lines = [l.strip() for l in edu_text.split("\n") if l.strip()]
     entries, buffer = [], ""
-
+ 
     # Helper function to process one education entry
     def process(line):
         # Extract year (with optional month or range)
         year_match = re.search(r"((Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)?\.?\s?\d{4}(\s?–\s?(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)?\.?\s?\d{4})?)", line, re.I)
         year = year_match.group().strip() if year_match else None
-
+ 
         # Find degree keyword
         deg_keyword = next((deg for deg in EDU_KEYWORDS if deg.lower() in line.lower()), None)
         if not deg_keyword:
             return None
         deg_match = re.search(deg_keyword, line, re.I)
-
+ 
         # Degree: from degree keyword to next comma or end
         degree = line[deg_match.start():].split(",")[0].strip()
         # Institution: remove degree and year from line
         inst = line.replace(degree, "").replace(year if year else "", "").strip(" ,")
         return {"degree": degree, "institution": inst, "year": year}
-
+ 
     for line in lines:
         if any(deg.lower() in line.lower() for deg in EDU_KEYWORDS):
             if buffer:
@@ -97,11 +97,11 @@ def extract_education(text):
                 buffer = line
         else:
             buffer += " " + line
-
+ 
     if buffer:
         e = process(buffer)
         if e: entries.append(e)
-
+ 
     return entries
 
 def extract_experience(text):
