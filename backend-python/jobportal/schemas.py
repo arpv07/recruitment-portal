@@ -6,6 +6,7 @@ from typing import Optional, List
 from datetime import datetime
 from bson import ObjectId
 
+
 # This class helps Pydantic work with MongoDB's ObjectId
 class PyObjectId(ObjectId):
     @classmethod

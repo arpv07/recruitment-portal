@@ -5,8 +5,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from typing import List
 import logging
+from datetime import datetime
 
-from jobportal import crud, schemas, models, auth
+from jobportal import crud, schemas, auth
 from jobportal.database import get_database
 
 logging.basicConfig(level=logging.INFO)
@@ -24,13 +25,20 @@ async def create_job(
     Create a new job posting. Only accessible by recruiters.
     """
     try:
-        created_job = await crud.create_job(db=db, job=job, recruiter_id=str(current_user['id']))
+        # ✅ FIX: Convert job to dict and add recruiter_id, posted_date
+        job_data = job.dict()
+        job_data["recruiter_id"] = str(current_user['id'])
+        job_data["posted_date"] = datetime.utcnow()
+
+        created_job = await crud.create_job(db, job_data)
         return created_job
-    except HTTPException as e:
-        raise e
+
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error creating job: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
 
 @router.get("/jobs/", response_model=List[schemas.JobPublic])
 async def read_jobs(
@@ -48,6 +56,7 @@ async def read_jobs(
         logger.error(f"Error retrieving jobs: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+
 @router.get("/jobs/{job_id}", response_model=schemas.JobPublic)
 async def read_job(
     job_id: str,
@@ -61,11 +70,12 @@ async def read_job(
         if db_job is None:
             raise HTTPException(status_code=404, detail="Job not found")
         return db_job
-    except HTTPException as e:
-        raise e
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error retrieving job {job_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
 
 @router.post("/jobs/{job_id}/apply", response_model=schemas.JobApplicationPublic)
 async def apply_for_job(
@@ -80,13 +90,19 @@ async def apply_for_job(
         job = await crud.get_job_by_id(db, job_id=job_id)
         if job is None:
             raise HTTPException(status_code=404, detail="Job not found")
-        application = await crud.create_job_application(db, job_id=job_id, applicant_id=str(current_user['id']))
+
+        application = await crud.create_job_application(
+            db,
+            job_id=job_id,
+            applicant_id=str(current_user['id'])
+        )
         return application
-    except HTTPException as e:
-        raise e
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error applying for job {job_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
+
 
 @router.get("/jobs/{job_id}/applications", response_model=List[schemas.JobApplicationPublic])
 async def get_job_applications(
@@ -101,14 +117,14 @@ async def get_job_applications(
         job = await crud.get_job_by_id(db, job_id=job_id)
         if job is None:
             raise HTTPException(status_code=404, detail="Job not found")
+
         if str(job['recruiter_id']) != str(current_user['id']):
             raise HTTPException(status_code=403, detail="Not authorized to view these applications")
+
         applications = await crud.get_applications_for_job(db, job_id=job_id)
         return applications
-    except HTTPException as e:
-        raise e
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error retrieving applications for job {job_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
-
-

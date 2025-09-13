@@ -4,9 +4,8 @@ These models define the structure of the data stored in the collections.
 """
 from pydantic import BaseModel, Field, EmailStr
 from bson import ObjectId
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
-from pydantic import UserBase, UserCreate, User, Token
 
 # This class helps Pydantic work with MongoDB's ObjectId
 class PyObjectId(ObjectId):
@@ -74,3 +73,4 @@ class Job(BaseModel):
         populate_by_name = True
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
+

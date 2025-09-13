@@ -2,6 +2,7 @@
 MongoDB database configuration and connection management using Motor.
 """
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from pymongo import errors
 from jobportal.config import settings
 import logging
 
@@ -25,15 +26,26 @@ async def connect_to_mongo():
     """
     logger.info("Connecting to MongoDB...")
     try:
-        mongodb.client = AsyncIOMotorClient(settings.MONGO_CONNECTION_STRING)
+        mongodb.client = AsyncIOMotorClient(
+            settings.MONGO_CONNECTION_STRING,
+            serverSelectionTimeoutMS=5000  # Fail fast if MongoDB is unreachable
+        )
+        # Force a connection test
+        await mongodb.client.server_info()
+
         mongodb.db = mongodb.client[settings.MONGO_DATABASE_NAME]
+
         # Create indexes
         await mongodb.db["users"].create_index("email", unique=True)
         await mongodb.db["jobs"].create_index("recruiter_id")
         await mongodb.db["job_applications"].create_index([("job_id", 1), ("applicant_id", 1)])
-        logger.info("Successfully connected to MongoDB!")
+        logger.info("✅ Successfully connected to MongoDB!")
+
+    except (errors.ConnectionFailure, errors.ServerSelectionTimeoutError) as e:
+        logger.error(f"❌ MongoDB connection failed: {str(e)}")
+        raise RuntimeError("Could not connect to MongoDB. Check your connection string and server status.") from e
     except Exception as e:
-        logger.error(f"Failed to connect to MongoDB: {str(e)}")
+        logger.error(f"Unexpected error while connecting to MongoDB: {str(e)}")
         raise
 
 async def close_mongo_connection():

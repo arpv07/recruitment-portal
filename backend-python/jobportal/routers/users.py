@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from jobportal.database import get_database
 from jobportal import crud, auth
-from jobportal.models import User, UserCreate, Token
+from jobportal.models import User  # DB model
+from jobportal.schemas import UserCreate, UserPublic, Token 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 router = APIRouter()
