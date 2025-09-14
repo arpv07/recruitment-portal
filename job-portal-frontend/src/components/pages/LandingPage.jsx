@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import Button from "../ui/Button";
-import { Logo } from "../ui/Logo";
+import Logo from "../ui/Logo";
 
 const LandingPage = () => {
     const navigate = useNavigate();

@@ -7,7 +7,7 @@ from datetime import datetime
 from bson import ObjectId
 
 
-# This class helps Pydantic work with MongoDB's ObjectId
+# --- ObjectId Support for MongoDB ---
 class PyObjectId(ObjectId):
     @classmethod
     def __get_validators__(cls):
@@ -34,7 +34,7 @@ class PyObjectId(ObjectId):
             serialization=core_schema.plain_serializer_function_ser_schema(lambda x: str(x)),
         )
 
-# --- Token ---
+# --- Token Schema ---
 class Token(BaseModel):
     access_token: str
     token_type: str
@@ -48,8 +48,17 @@ class UserBase(BaseModel):
     linked_in_url: Optional[str] = None
     location: Optional[str] = None
 
+    @validator("linked_in_url")
+    def validate_linkedin_url(cls, v):
+        if v:
+            if not v.startswith("https://linkedin.com/in/") and not v.startswith("http://linkedin.com/in/"):
+                raise ValueError("LinkedIn profile must be in format: https://linkedin.com/in/username")
+        return v
+
+
 class UserCreate(UserBase):
     password: str
+
 
 class UserPublic(UserBase):
     id: PyObjectId = Field(..., alias="_id")
@@ -62,13 +71,16 @@ class UserPublic(UserBase):
         arbitrary_types_allowed = True
         json_encoders = {PyObjectId: str}
 
+
 class LoginUserReqDto(BaseModel):
     username: str
     password: str
 
+
 class AssignRoleDto(BaseModel):
     username: str
     role: str
+
 
 # --- Job Schemas ---
 class JobBase(BaseModel):
@@ -77,8 +89,10 @@ class JobBase(BaseModel):
     company: str
     location: str
 
+
 class JobCreate(JobBase):
     pass
+
 
 class JobPublic(JobBase):
     id: PyObjectId = Field(..., alias="_id")
