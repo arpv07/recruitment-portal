@@ -1,11 +1,14 @@
+# (Your existing requirements...)
 fastapi
-uvicorn[standard]
-python-dotenv
-pydantic
+uvicorn
 motor
+pydantic
+pydantic-settings
 python-jose[cryptography]
 passlib[bcrypt]
 python-multipart
-pymongo
-os
-bcrypt==4.1.3
+# --- New dependencies for parser ---
+PyMuPDF
+python-docx
+spacy
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1.tar.gz#egg=en_core_web_sm

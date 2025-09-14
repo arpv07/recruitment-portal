@@ -4,9 +4,10 @@ Main application file for the FastAPI Job Portal with MongoDB.
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from jobportal.database import connect_to_mongo, close_mongo_connection
-from jobportal.routers import jobs, users
+# Updated import to include the new parser router
+from jobportal.routers import jobs, users, parser 
 from jobportal.config import settings
-import os  # Added import
+import os
 import warnings
 
 # Warn if running in production without SSL
@@ -23,21 +24,23 @@ async def lifespan(app: FastAPI):
     yield
     await close_mongo_connection()
 
-# Initialize the FastAPI application with the lifespan manager
+# Initialize the FastAPI application
 app = FastAPI(
     title="Job Portal API with MongoDB",
-    description="A FastAPI application to manage job postings and applications using MongoDB. Requires JWT authentication for protected endpoints.",
-    version="1.0.0",
+    description="A FastAPI application to manage job postings, applications, and resume parsing.",
+    version="1.1.0",
     lifespan=lifespan
 )
 
-# Include the API routers
+# Include all API routers
 app.include_router(users.router, prefix="/api", tags=["Users"])
 app.include_router(jobs.router, prefix="/api", tags=["Jobs"])
+# Add the new parser router
+app.include_router(parser.router, prefix="/api", tags=["Parser"]) 
 
 @app.get("/", tags=["Root"])
 def read_root():
     """
     Root endpoint for the API.
     """
-    return {"message": "Welcome to the Job Portal API with MongoDB!"}
+    return {"message": "Welcome to the Job Portal API!"}

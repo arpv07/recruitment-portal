@@ -4,3 +4,5 @@ export const Logo = () => (
         <img src="/src/assets/agreeya-logo.png" alt="Agreeya Logo" className="h-full w-auto object-contain" />
     </div>
 );
+
+export default Logo;
