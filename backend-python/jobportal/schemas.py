@@ -41,30 +41,34 @@ class Token(BaseModel):
 
 # --- User Schemas ---
 class UserBase(BaseModel):
-    email: EmailStr
+    username: str
     full_name: Optional[str] = None
+    email: EmailStr
+    phone: Optional[str] = None
+    linked_in_url: Optional[str] = None
+    location: Optional[str] = None
 
 class UserCreate(UserBase):
     password: str
-    is_recruiter: bool = False
-
-    @validator("password")
-    def validate_password(cls, v):
-        if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters long")
-        if not any(c.isupper() for c in v) or not any(c.isdigit() for c in v):
-            raise ValueError("Password must contain at least one uppercase letter and one digit")
-        return v
 
 class UserPublic(UserBase):
     id: PyObjectId = Field(..., alias="_id")
-    is_recruiter: bool
+    role: str
+    created_at: datetime
 
     class Config:
         from_attributes = True
         populate_by_name = True
         arbitrary_types_allowed = True
         json_encoders = {PyObjectId: str}
+
+class LoginUserReqDto(BaseModel):
+    username: str
+    password: str
+
+class AssignRoleDto(BaseModel):
+    username: str
+    role: str
 
 # --- Job Schemas ---
 class JobBase(BaseModel):
@@ -80,24 +84,6 @@ class JobPublic(JobBase):
     id: PyObjectId = Field(..., alias="_id")
     posted_date: datetime
     recruiter_id: PyObjectId
-
-    class Config:
-        from_attributes = True
-        populate_by_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {PyObjectId: str}
-
-# --- Job Application Schemas ---
-class JobApplicationBase(BaseModel):
-    job_id: PyObjectId
-    applicant_id: PyObjectId
-
-class JobApplicationCreate(JobApplicationBase):
-    pass
-
-class JobApplicationPublic(JobApplicationBase):
-    id: PyObjectId = Field(..., alias="_id")
-    application_date: datetime
 
     class Config:
         from_attributes = True

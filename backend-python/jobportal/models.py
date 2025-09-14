@@ -37,11 +37,16 @@ class PyObjectId(ObjectId):
 # --- User Model ---
 class User(BaseModel):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    username: str
+    password: str
+    full_name: str
     email: EmailStr
-    hashed_password: str
-    full_name: Optional[str] = None
-    is_recruiter: bool = False
-    
+    phone: Optional[str] = None
+    linked_in_url: Optional[str] = None
+    location: Optional[str] = None
+    role: str = "User"
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
@@ -53,7 +58,7 @@ class JobApplication(BaseModel):
     job_id: PyObjectId
     applicant_id: PyObjectId
     application_date: datetime = Field(default_factory=datetime.utcnow)
-    
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
@@ -68,9 +73,8 @@ class Job(BaseModel):
     location: str
     posted_date: datetime = Field(default_factory=datetime.utcnow)
     recruiter_id: PyObjectId
-    
+
     class Config:
         populate_by_name = True
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
-

@@ -22,10 +22,42 @@ async def get_user_by_email(db, email: str):
         raise HTTPException(status_code=500, detail="Unexpected error fetching user")
 
 
+async def get_user_by_username(db, username: str):
+    try:
+        return await db["users"].find_one({"username": username})
+    except (errors.ConnectionFailure, errors.ServerSelectionTimeoutError) as e:
+        logger.error(f"MongoDB connection error while fetching user: {str(e)}")
+        raise HTTPException(status_code=500, detail="Database connection failed")
+    except Exception as e:
+        logger.error(f"Unexpected error while fetching user: {str(e)}")
+        raise HTTPException(status_code=500, detail="Unexpected error fetching user")
+
+
+async def get_user_by_phone(db, phone: str):
+    try:
+        return await db["users"].find_one({"phone": phone})
+    except (errors.ConnectionFailure, errors.ServerSelectionTimeoutError) as e:
+        logger.error(f"MongoDB connection error while fetching user: {str(e)}")
+        raise HTTPException(status_code=500, detail="Database connection failed")
+    except Exception as e:
+        logger.error(f"Unexpected error while fetching user: {str(e)}")
+        raise HTTPException(status_code=500, detail="Unexpected error fetching user")
+
+
+async def get_all_users(db):
+    try:
+        cursor = db["users"].find({})
+        return await cursor.to_list(length=None)
+    except Exception as e:
+        logger.error(f"Error fetching users: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error fetching users")
+
+
 async def create_user(db, user_data: dict):
     try:
         result = await db["users"].insert_one(user_data)
-        return {**user_data, "_id": result.inserted_id}
+        new_user = await db["users"].find_one({"_id": result.inserted_id})
+        return new_user
     except errors.DuplicateKeyError:
         raise HTTPException(status_code=400, detail="Email already registered")
     except (errors.ConnectionFailure, errors.ServerSelectionTimeoutError) as e:
@@ -35,6 +67,16 @@ async def create_user(db, user_data: dict):
         logger.error(f"Unexpected error creating user: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error creating user: {str(e)}")
 
+
+async def update_user(db, user_id, user_data: dict):
+    try:
+        await db["users"].update_one({"_id": user_id}, {"$set": user_data})
+        return await db["users"].find_one({"_id": user_id})
+    except Exception as e:
+        logger.error(f"Error updating user: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error updating user")
+
+# ... (rest of the file remains the same)
 
 # ----------------------------
 # JOB CRUD OPERATIONS
