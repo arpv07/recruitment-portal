@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import { FaReact, FaNodeJs, FaBug, FaSearch, FaBriefcase, FaPoll } from 'react-icons/fa';
 
 // Helper to get a relevant icon based on the job title
@@ -27,22 +28,31 @@ const getPriorityStyles = (priority) => {
 
 const BarChartCard = ({ data, title }) => {
   if (!data || data.length === 0) {
-    return <div>No active jobs to display.</div>;
+    return (
+        <div className="bg-white p-6 rounded-2xl shadow-lg flex items-center justify-center h-full">
+            <p className="text-gray-500">No active jobs to display.</p>
+        </div>
+    );
   }
 
   // Find the max number of applications to normalize bar widths
   const maxApplications = Math.max(...data.map(job => job.applications), 0);
 
   return (
-    <div className="w-full h-full flex flex-col">
+    <div className="bg-white p-6 rounded-2xl shadow-lg hover:shadow-2xl transition-shadow duration-300 flex flex-col h-full col-span-1 md:col-span-2">
       <div className="flex items-center gap-3 mb-4">
         <FaPoll className="text-xl text-gray-400" />
         <h3 className="text-xl font-bold text-gray-800">{title}</h3>
       </div>
       
       <div className="space-y-4 flex-grow">
-        {data.map((job) => (
-          <div key={job.name}>
+        {data.map((job, index) => (
+          <motion.div 
+            key={job.name}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: index * 0.1 }}
+          >
             <div className="flex justify-between items-center mb-1">
               <div className="flex items-center gap-2">
                 <span className="text-lg">{getJobIcon(job.name)}</span>
@@ -54,14 +64,16 @@ const BarChartCard = ({ data, title }) => {
             </div>
             <div className="flex items-center gap-3">
               <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
-                <div
-                  className="bg-gradient-to-r from-blue-400 to-indigo-500 h-4 rounded-full transition-all duration-500 ease-out"
-                  style={{ width: `${(job.applications / maxApplications) * 100}%` }}
+                <motion.div
+                  className="bg-gradient-to-r from-blue-400 to-indigo-500 h-4 rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${(job.applications / maxApplications) * 100}%` }}
+                  transition={{ duration: 1, ease: 'easeOut', delay: 0.5 + index * 0.1 }}
                 />
               </div>
               <span className="text-sm font-bold text-gray-800 w-12 text-right">{job.applications}</span>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
     </div>

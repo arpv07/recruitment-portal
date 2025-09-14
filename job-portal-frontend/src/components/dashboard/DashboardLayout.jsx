@@ -1,20 +1,25 @@
-
 import { useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { ChevronLeftIcon, ChevronRightIcon } from "../ui/Icons";
 import { Logo } from "../ui/Logo";
 import Button from "../ui/Button";
+import { logout } from "../../store/authSlice";
 
 
 const DashboardLayout = ({
-  user,
-  onLogout,
-  navItems = [],  // Default value
+  navItems,
   activeView,
   setActiveView,
   children
 }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { user } = useSelector(state => state.auth);
+  const dispatch = useDispatch();
+
+  const handleLogout = () => {
+      dispatch(logout());
+  }
 
   const NavLink = ({ itemKey, label, icon: Icon }) => (
     <a
@@ -66,9 +71,8 @@ const DashboardLayout = ({
           <Logo />
         </div>
 
-        {/* ✅ Safe navItems rendering */}
         <nav className="flex-grow flex flex-col gap-2">
-          {navItems?.map((item) => (
+          {navItems && navItems.map((item) => (
             <NavLink key={item.key} itemKey={item.key} label={item.label} icon={item.icon} />
           ))}
         </nav>
@@ -115,11 +119,10 @@ const DashboardLayout = ({
           </button>
           <div className="flex-1"></div>
           <div className="flex items-center gap-4">
-            {/* ✅ Safe user access */}
             <span className="font-medium text-gray-700 hidden sm:block">
               Welcome, {user?.fullName || "User"}
             </span>
-            <Button onClick={onLogout} variant="secondary">
+            <Button onClick={handleLogout} variant="secondary">
               Logout
             </Button>
           </div>

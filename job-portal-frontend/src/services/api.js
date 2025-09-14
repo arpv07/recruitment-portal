@@ -68,7 +68,7 @@ export const apiClient = {
   },
 
   // --- Dashboard ---
-  getDashboardData: async () => {
+  getRecruiterStats: async () => {
     const res = await fetch(`${API_BASE_URL}/dashboard`, {
       headers: { Authorization: `Bearer ${getToken()}` },
     });
@@ -77,28 +77,50 @@ export const apiClient = {
   },
 
   // --- Jobs ---
-  getAvailableJobs: async () => {
-    const res = await fetch(`${API_BASE_URL}/jobs/`, {
-      headers: { Authorization: `Bearer ${getToken()}` },
-    });
-    if (!res.ok) throw new Error('Failed to fetch jobs.');
-    const jobs = await res.json();
-    // Map data to match component expectations
-    return jobs.map(job => ({ ...job, position: job.title, id: job._id }));
-  },
+ getAvailableJobs: async () => {
+  const res = await fetch(`${API_BASE_URL}/jobs/`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  if (!res.ok) throw new Error("Failed to fetch jobs.");
+  
+  const jobs = await res.json();
+  return jobs.map(job => ({
+    id: job._id,
+    title: job.title,
+    department: job.company,
+    location: job.location,
+    postedDate: job.posted_date,
+    status: "Open",         // Temporary field, backend does not provide status
+    applications: 0,        // Temporary placeholder until you build applications API
+  }));
+},
 
-  postJob: async (jobData) => {
-    const res = await fetch(`${API_BASE_URL}/jobs/`, {
-        method: 'POST',
-        headers: { 
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${getToken()}` 
-        },
-        body: JSON.stringify(jobData),
-    });
-    if (!res.ok) throw new Error('Failed to post job.');
-    return res.json();
-  },
+
+ postJob: async (jobData) => {
+  const payload = {
+    title: jobData.title,
+    description: jobData.description,
+    company: jobData.department || "Unknown Company", // Map department -> company
+    location: jobData.location,
+  };
+
+  const res = await fetch(`${API_BASE_URL}/jobs/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getToken()}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: "Failed to post job." }));
+    throw new Error(errorData.detail || "Failed to post job.");
+  }
+
+  return res.json();
+},
+
   
   // --- File Parsing ---
   parseFile: async (file) => {

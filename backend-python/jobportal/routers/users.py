@@ -1,101 +1,88 @@
 """
-Router for user-related endpoints in the Job Portal API.
+User router for Job Portal API.
+Handles user authentication, creation, and retrieval.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
-from jobportal.database import get_database
-from jobportal import crud, auth, schemas
-from jobportal.models import User
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from bson import ObjectId
-from datetime import datetime
+from jobportal import crud, schemas
+from jobportal.auth import verify_password, get_password_hash, create_access_token, role_checker, get_current_user
+from jobportal.database import get_database
 
 router = APIRouter()
 
-@router.post("/register", response_model=schemas.UserPublic, status_code=status.HTTP_201_CREATED)
-async def register(user: schemas.UserCreate, db: AsyncIOMotorDatabase = Depends(get_database)):
-    """
-    Create a new user with hashed password and store in MongoDB.
-    """
-    if await crud.get_user_by_username(db, username=user.username):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username is already taken",
-        )
-    if await crud.get_user_by_email(db, email=user.email):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email is already registered",
-        )
-    if user.phone and await crud.get_user_by_phone(db, phone=user.phone):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Phone number is already registered",
-        )
+# --- Request & Response Models ---
+class LoginRequest(BaseModel):
+    username: str = Field(..., example="johndoe")
+    password: str = Field(..., example="strongpassword")
 
-    all_users = await crud.get_all_users(db)
-    role = "SuperAdmin" if not all_users else "User"
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
 
-    hashed_password = auth.get_password_hash(user.password)
-    user_dict = user.dict()
-    user_dict["password"] = hashed_password
-    user_dict["role"] = role
-    user_dict["created_at"] = datetime.utcnow()
+class UserCreateRequest(BaseModel):
+    username: str
+    password: str
+    role: str = "user"  # default role
 
+class UserResponse(BaseModel):
+    username: str
+    role: str
 
-    new_user = await crud.create_user(db, user_dict)
-    return new_user
+# --- Login Endpoint ---
+@router.post("/login", response_model=TokenResponse)
+async def login(request: LoginRequest, db: AsyncIOMotorDatabase = Depends(get_database)):
+    user_dict = await crud.get_user_by_username(db, request.username)
+    if not user_dict:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
 
+    if not verify_password(request.password, user_dict["password"]):
+        raise HTTPException(status_code=401, detail="Invalid username or password")
 
-@router.post("/login")
-async def login(login_dto: schemas.LoginUserReqDto, db: AsyncIOMotorDatabase = Depends(get_database)):
-    user = await crud.get_user_by_username(db, username=login_dto.username)
-    if not user or not auth.verify_password(login_dto.password, user["password"]):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    access_token = auth.create_access_token(data={"sub": user["username"], "role": user["role"]})
-    return {
-        "message": "Login successful",
-        "token": access_token,
-        "user": {
-            "FullName": user["full_name"],
-            "Email": user["email"],
-            "Phone": user["phone"],
-            "LinkedInUrl": user.get("linked_in_url"),
-            "Location": user.get("location"),
-            "CreatedAt": user["created_at"],
-        }
+    token_data = {"sub": user_dict["username"], "role": user_dict["role"]}
+    access_token = create_access_token(token_data)
+
+    return {"access_token": access_token, "token_type": "bearer"}
+
+# --- Register Endpoint (New) ---
+@router.post("/register", response_model=TokenResponse)
+async def register(request: UserCreateRequest, db: AsyncIOMotorDatabase = Depends(get_database)):
+    existing_user = await crud.get_user_by_username(db, request.username)
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Username already exists")
+
+    hashed_password = get_password_hash(request.password)
+    user_dict = {
+        "username": request.username,
+        "password": hashed_password,
+        "role": request.role
     }
+    await crud.create_user(db, user_dict)
 
+    token_data = {"sub": request.username, "role": request.role}
+    access_token = create_access_token(token_data)
 
-@router.post("/add-role")
-async def add_role(dto: schemas.AssignRoleDto, db: AsyncIOMotorDatabase = Depends(get_database), current_user: User = Depends(auth.role_checker(["SuperAdmin"]))):
-    user = await crud.get_user_by_username(db, dto.username)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    if user["role"] == dto.role:
-        return {"message": f"User '{user['username']}' already has role '{dto.role}'"}
-    await crud.update_user(db, user["_id"], {"role": dto.role})
-    return {"message": f"Role '{dto.role}' assigned to {user['username']} successfully"}
+    return {"access_token": access_token, "token_type": "bearer"}
 
+# --- Create User Endpoint (Admin / Internal Use) ---
+@router.post("/users", response_model=UserResponse)
+async def create_user(request: UserCreateRequest, db: AsyncIOMotorDatabase = Depends(get_database)):
+    existing_user = await crud.get_user_by_username(db, request.username)
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Username already exists")
 
-@router.post("/assign-role")
-async def assign_role(dto: schemas.AssignRoleDto, db: AsyncIOMotorDatabase = Depends(get_database), current_user: User = Depends(auth.role_checker(["Admin", "SuperAdmin"]))):
-    user = await crud.get_user_by_username(db, dto.username)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    if dto.role == "SuperAdmin":
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Cannot assign SuperAdmin role")
-    await crud.update_user(db, user["_id"], {"role": dto.role})
-    return {"message": f"Role '{dto.role}' assigned to {user['username']} successfully"}
+    hashed_password = get_password_hash(request.password)
+    user_dict = {"username": request.username, "password": hashed_password, "role": request.role}
+    await crud.create_user(db, user_dict)
+    return {"username": request.username, "role": request.role}
 
+# --- Get Current User Endpoint ---
+@router.get("/me", response_model=UserResponse)
+async def read_current_user(current_user=Depends(get_current_user)):
+    return {"username": current_user.username, "role": current_user.role}
 
-@router.post("/apply")
-async def apply(current_user: User = Depends(auth.role_checker(["User", "SuperAdmin"]))):
-    return {"message": "Application submitted successfully", "user": current_user.username}
-
-@router.get("/dashboard")
-async def dashboard(current_user: User = Depends(auth.role_checker(["Admin", "SuperAdmin"]))):
-    return {"message": "Welcome to Admin Dashboard", "user": current_user.username}
+# --- Admin-only example endpoint ---
+@router.get("/admin", response_model=UserResponse)
+async def admin_only_route(current_user=Depends(role_checker(["admin"]))):
+    return {"username": current_user.username, "role": current_user.role}

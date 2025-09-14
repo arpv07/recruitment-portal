@@ -66,7 +66,10 @@ const AllJobPostingsView = ({ jobs, setActiveView, onEdit }) => {
                                             <p className="text-sm text-gray-500">{job.department}</p>
                                         </td>
                                         <td className="p-4 text-gray-700">{job.location}</td>
-                                        <td className="p-4 text-gray-700">{new Date(job.postedDate).toLocaleDateString()}</td>
+                                        <td className="p-4 text-gray-700">
+  {job.postedDate ? new Date(job.postedDate).toLocaleDateString() : "N/A"}
+</td>
+
                                         <td className="p-4">
                                             <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusStyles(job.status)}`}>
                                                 {job.status}

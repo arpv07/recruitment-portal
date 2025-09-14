@@ -1,46 +1,77 @@
-"""
-Main application file for the FastAPI Job Portal with MongoDB.
-"""
-from fastapi import FastAPI
-from contextlib import asynccontextmanager
-from jobportal.database import connect_to_mongo, close_mongo_connection
-# Updated import to include the new parser router
-from jobportal.routers import jobs, users, parser 
-from jobportal.config import settings
-import os
-import warnings
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
+from . import auth, models, schemas, crud
+from .database import SessionLocal, engine
+from .routers import users, jobs, parser
 
-# Warn if running in production without SSL
-if settings.ENV == "production":
-    warnings.warn("Ensure HTTPS is configured in production for security!")
+models.Base.metadata.create_all(bind=engine)
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """
-    Context manager to handle application startup and shutdown events.
-    Connects to the database on startup and disconnects on shutdown.
-    """
-    await connect_to_mongo()
-    yield
-    await close_mongo_connection()
+app = FastAPI()
 
-# Initialize the FastAPI application
-app = FastAPI(
-    title="Job Portal API with MongoDB",
-    description="A FastAPI application to manage job postings, applications, and resume parsing.",
-    version="1.1.0",
-    lifespan=lifespan
+# CORS Middleware
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# Include all API routers
-app.include_router(users.router, prefix="/api", tags=["Users"])
-app.include_router(jobs.router, prefix="/api", tags=["Jobs"])
-# Add the new parser router
-app.include_router(parser.router, prefix="/api", tags=["Parser"]) 
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
-@app.get("/", tags=["Root"])
+# Include routers
+app.include_router(auth.router, prefix="/api", tags=["authentication"])
+app.include_router(users.router, prefix="/api", tags=["users"])
+app.include_router(jobs.router, prefix="/api/jobs", tags=["jobs"])
+app.include_router(parser.router, prefix="/api", tags=["parser"])
+
+
+# ✅ ADDED: Dashboard Endpoint
+@app.get("/api/dashboard", dependencies=[Depends(auth.get_current_user)])
+async def get_dashboard_data(db: Session = Depends(get_db)):
+    """
+    Provides aggregated data for the recruiter dashboard.
+    """
+    try:
+        total_jobs = db.query(models.Job).count()
+        active_jobs = db.query(models.Job).filter(models.Job.status == 'active').count()
+        # These are placeholders; you'll need an Application model to implement these properly.
+        total_applications = 125 
+        reviewed_applications = 45
+        rejected_applications = 15
+        
+        # Placeholder for candidates per job
+        candidates_per_job = [
+            {"name": "React Developer", "applications": 30, "priority": "high"},
+            {"name": "Node.js Engineer", "applications": 20, "priority": "medium"},
+            {"name": "QA Tester", "applications": 15, "priority": "low"},
+        ]
+
+        return {
+            "total_jobs": total_jobs,
+            "active_jobs": active_jobs,
+            "total_applications": total_applications,
+            "reviewed_applications": reviewed_applications,
+            "rejected_applications": rejected_applications,
+            "candidates_per_job": candidates_per_job,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred: {e}",
+        )
+
+@app.get("/")
 def read_root():
-    """
-    Root endpoint for the API.
-    """
-    return {"message": "Welcome to the Job Portal API!"}
+    return {"message": "Welcome to the Job Portal API"}
