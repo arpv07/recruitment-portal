@@ -1,17 +1,21 @@
 """
-Router for job-related endpoints in the Job Portal API.
+Router for job-related endpoints in the Job Portal API (MongoDB, async).
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
+from typing import List
+from motor.motor_asyncio import AsyncIOMotorDatabase
+from bson import ObjectId
+
 from jobportal.database import get_database
 from jobportal import crud, auth, schemas
-from jobportal.models import User, Job
-from motor.motor_asyncio import AsyncIOMotorDatabase
-from typing import List
-from bson import ObjectId
+from jobportal.models import User
 
 router = APIRouter()
 
-@router.post("/jobs/", response_model=schemas.JobPublic, status_code=status.HTTP_201_CREATED)
+# ----------------------------
+# CREATE A NEW JOB
+# ----------------------------
+@router.post("/", response_model=schemas.JobPublic, status_code=status.HTTP_201_CREATED)
 async def create_job(
     job: schemas.JobCreate,
     db: AsyncIOMotorDatabase = Depends(get_database),
@@ -25,24 +29,52 @@ async def create_job(
     new_job = await crud.create_job(db, job_dict)
     return new_job
 
-@router.get("/jobs/", response_model=List[schemas.JobPublic])
+# ----------------------------
+# GET ALL JOBS
+# ----------------------------
+@router.get("/", response_model=List[schemas.JobPublic])
 async def get_jobs(db: AsyncIOMotorDatabase = Depends(get_database)):
     """
     Retrieve all job postings.
     """
-    return await crud.get_jobs(db)
+    jobs = await crud.get_jobs(db)
+    return jobs
 
-@router.get("/jobs/{job_id}", response_model=schemas.JobPublic)
+# ----------------------------
+# GET JOB BY ID
+# ----------------------------
+@router.get("/{job_id}", response_model=schemas.JobPublic)
 async def get_job_by_id(job_id: str, db: AsyncIOMotorDatabase = Depends(get_database)):
     """
     Retrieve a single job by its ID.
     """
     job = await crud.get_job_by_id(db, job_id)
-    if job is None:
+    if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
     return job
 
-@router.delete("/jobs/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
+# ----------------------------
+# UPDATE JOB
+# ----------------------------
+@router.put("/{job_id}", response_model=schemas.JobPublic)
+async def update_job(
+    job_id: str,
+    job: schemas.JobCreate = Body(...),
+    db: AsyncIOMotorDatabase = Depends(get_database),
+    current_user: User = Depends(auth.role_checker(["Admin", "SuperAdmin"])),
+):
+    """
+    Update an existing job posting.
+    """
+    updated_job = await crud.update_job(db, job_id, job.dict())
+    if not updated_job:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+    return updated_job
+
+# ----------------------------
+# DELETE JOB
+# ----------------------------
+@router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_job(
     job_id: str,
     db: AsyncIOMotorDatabase = Depends(get_database),

@@ -90,8 +90,13 @@ class JobBase(BaseModel):
     location: str
 
 
-class JobCreate(JobBase):
-    pass
+class JobCreate(BaseModel):
+    title: str
+    description: str
+    company: str
+    location: str
+    posted_date: datetime = Field(default_factory=datetime.utcnow)
+
 
 
 class JobPublic(JobBase):
@@ -102,5 +107,5 @@ class JobPublic(JobBase):
     class Config:
         from_attributes = True
         populate_by_name = True
-        arbitrary_types_allowed = True
+        arbitrary_types_allowed =    True
         json_encoders = {PyObjectId: str}

@@ -16,13 +16,15 @@ import {
 } from "react-icons/fa";
 import { apiClient } from "../../../services/api";
 
-// Mock data for employment types
 const employmentTypes = ["Full-time", "Part-time", "Contract", "Internship"];
 
 const JobPostingView = ({ onPost, onUpdate, initialData, addToast }) => {
   const [step, setStep] = useState(1);
   const [isParsing, setIsParsing] = useState(false);
   const fileInputRef = useRef(null);
+
+  const isEditMode = !!initialData;
+
   const [jobData, setJobData] = useState({
     title: "",
     department: "",
@@ -35,11 +37,15 @@ const JobPostingView = ({ onPost, onUpdate, initialData, addToast }) => {
     salaryMax: "",
   });
 
-  const isEditMode = !!initialData;
-
+  // Normalize initialData for edit mode
   useEffect(() => {
-    if (isEditMode) {
-      setJobData(initialData);
+    if (isEditMode && initialData) {
+      setJobData({
+        ...initialData,
+        skills: Array.isArray(initialData.skills)
+          ? initialData.skills.join(", ")
+          : initialData.skills || "",
+      });
     } else {
       setJobData({
         title: "",
@@ -64,9 +70,7 @@ const JobPostingView = ({ onPost, onUpdate, initialData, addToast }) => {
     setJobData((prev) => ({ ...prev, skills: e.target.value }));
   };
 
-  const handleImportClick = () => {
-    fileInputRef.current.click();
-  };
+  const handleImportClick = () => fileInputRef.current.click();
 
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
@@ -75,31 +79,42 @@ const JobPostingView = ({ onPost, onUpdate, initialData, addToast }) => {
     setIsParsing(true);
     try {
       const parsedData = await apiClient.uploadJD(file);
-      setJobData((prev) => ({ ...prev, ...parsedData }));
-      if (addToast) {
-        addToast({
-          message: "Job Description parsed and filled!",
-          type: "success",
-        });
-      }
-    } catch (error) {
-      if (addToast) {
-        addToast({
-          message: error.message || "Failed to parse file.",
-          type: "error",
-        });
-      }
+      setJobData((prev) => ({
+        ...prev,
+        ...parsedData,
+        skills: Array.isArray(parsedData.skills)
+          ? parsedData.skills.join(", ")
+          : parsedData.skills || "",
+      }));
+      addToast?.({
+        message: "Job Description parsed and filled!",
+        type: "success",
+      });
+    } catch (err) {
+      addToast?.({
+        message: err.message || "Failed to parse file.",
+        type: "error",
+      });
     } finally {
       setIsParsing(false);
       e.target.value = null;
     }
   };
 
-  const handleSubmit = () => {
-    if (isEditMode) {
-      onUpdate(jobData);
-    } else {
-      onPost(jobData);
+  const handleSubmit = async () => {
+    try {
+      const payload = {
+        ...jobData,
+        skills: jobData.skills
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean),
+      };
+
+      if (isEditMode) await onUpdate(payload);
+      else await onPost(payload);
+    } catch (err) {
+      addToast?.({ message: err.message, type: "error" });
     }
   };
 
@@ -120,32 +135,30 @@ const JobPostingView = ({ onPost, onUpdate, initialData, addToast }) => {
 
       {/* Step Indicator */}
       <div className="flex justify-center items-center mb-10">
-        {["Job Details", "Requirements", "Preview & Post"].map((label, index) => (
-          <React.Fragment key={index}>
+        {["Job Details", "Requirements", "Preview & Post"].map((label, idx) => (
+          <React.Fragment key={idx}>
             <div className="flex items-center">
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg transition-all duration-300 ${
-                  step > index
+                  step > idx
                     ? "bg-blue-500 text-white shadow-md"
                     : "bg-blue-100 text-blue-700"
                 }`}
               >
-                {step > index ? <FaCheckCircle /> : index + 1}
+                {step > idx ? <FaCheckCircle /> : idx + 1}
               </div>
               <p
                 className={`ml-3 font-semibold ${
-                  step >= index + 1
-                    ? "text-blue-700"
-                    : "text-gray-400"
+                  step >= idx + 1 ? "text-blue-700" : "text-gray-400"
                 }`}
               >
                 {label}
               </p>
             </div>
-            {index < 2 && (
+            {idx < 2 && (
               <div
                 className={`flex-auto border-t-2 transition-all duration-300 mx-4 ${
-                  step > index + 1 ? "border-blue-500" : "border-gray-300"
+                  step > idx + 1 ? "border-blue-500" : "border-gray-300"
                 }`}
               ></div>
             )}
@@ -307,7 +320,7 @@ const JobPostingView = ({ onPost, onUpdate, initialData, addToast }) => {
           </AnimatePresence>
         </div>
 
-        {/* Live Preview Section */}
+        {/* Live Preview */}
         <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm h-full">
           <h3 className="text-2xl font-bold text-gray-700 mb-4 flex items-center gap-2">
             <FaEye /> Live Preview
@@ -340,26 +353,27 @@ const JobPostingView = ({ onPost, onUpdate, initialData, addToast }) => {
             <div>
               <h5 className="font-bold text-gray-800 mb-2">Skills</h5>
               <div className="flex flex-wrap gap-2">
-                {jobData.skills
-                  .split(",")
-                  .map(
-                    (skill) =>
-                      skill.trim() && (
-                        <span
-                          key={skill}
-                          className="bg-gray-100 text-gray-700 text-xs font-medium px-2.5 py-1 rounded-full"
-                        >
-                          {skill.trim()}
-                        </span>
-                      )
-                  )}
+                {(Array.isArray(jobData.skills)
+                  ? jobData.skills
+                  : (jobData.skills || "").split(",")
+                ).map(
+                  (skill, idx) =>
+                    skill?.trim() && (
+                      <span
+                        key={idx}
+                        className="bg-gray-100 text-gray-700 text-xs font-medium px-2.5 py-1 rounded-full"
+                      >
+                        {skill.trim()}
+                      </span>
+                    )
+                )}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Navigation Buttons */}
+      {/* Navigation */}
       <div className="mt-10 flex justify-between">
         <Button
           onClick={prevStep}

@@ -7,7 +7,6 @@ import DonutChart from "./DonutChart";
 import CardSkeleton from "../../ui/CardSkeleton";
 import { FaUsers, FaBriefcase, FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
 
-
 // Mock Data for a great visual presentation
 const mockStats = {
     total_jobs: 24,
@@ -23,7 +22,6 @@ const mockStats = {
         { name: "Data Scientist", applications: 19, priority: "low"},
     ]
 };
-
 
 const StatCard = ({ icon, title, value, color, delay }) => (
     <motion.div 
@@ -83,7 +81,6 @@ const RecruiterStatsView = ({ token }) => {
         candidates_per_job
     } = stats;
 
-
     const applicationStatusData = {
         labels: ['Pending', 'Reviewed', 'Rejected'],
         datasets: [{
@@ -97,29 +94,43 @@ const RecruiterStatsView = ({ token }) => {
     };
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <StatCard icon={<FaBriefcase/>} title="Active Jobs" value={active_jobs} color="text-blue-500" delay={0.1} />
-            <StatCard icon={<FaUsers/>} title="Total Applications" value={total_applications} color="text-yellow-500" delay={0.2} />
-            <StatCard icon={<FaCheckCircle/>} title="Reviewed" value={stats.reviewed_applications} color="text-green-500" delay={0.3} />
-            <StatCard icon={<FaTimesCircle/>} title="Rejected" value={stats.rejected_applications} color="text-red-500" delay={0.4} />
-            
-            <motion.div 
-              className="lg:col-span-2"
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.5}}
+        <div className="space-y-6">
+            {/* Dashboard Header */}
+            <motion.h1
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+                className="text-4xl font-bold text-gray-800 flex items-center gap-2"
             >
-                <BarChartCard data={candidates_per_job} title="Top Active Jobs" />
-            </motion.div>
+                Dashboard
             
-            <motion.div 
-              className="lg:col-span-2"
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.6}}
-            >
-                <DonutChart data={applicationStatusData} title="Application Status Overview" />
-            </motion.div>
+            </motion.h1>
+
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatCard icon={<FaBriefcase/>} title="Active Jobs" value={active_jobs} color="text-blue-500" delay={0.1} />
+                <StatCard icon={<FaUsers/>} title="Total Applications" value={total_applications} color="text-yellow-500" delay={0.2} />
+                <StatCard icon={<FaCheckCircle/>} title="Reviewed" value={stats.reviewed_applications} color="text-green-500" delay={0.3} />
+                <StatCard icon={<FaTimesCircle/>} title="Rejected" value={stats.rejected_applications} color="text-red-500" delay={0.4} />
+                
+                <motion.div 
+                  className="lg:col-span-2"
+                  initial={{ opacity: 0, y: 50 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.5}}
+                >
+                    <BarChartCard data={candidates_per_job} title="Top Active Jobs" />
+                </motion.div>
+                
+                <motion.div 
+                  className="lg:col-span-2"
+                  initial={{ opacity: 0, y: 50 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.6}}
+                >
+                    <DonutChart data={applicationStatusData} title="Application Status Overview" />
+                </motion.div>
+            </div>
         </div>
     );
 };

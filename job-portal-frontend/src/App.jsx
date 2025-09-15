@@ -5,31 +5,27 @@ import LandingPage from './components/pages/LandingPage';
 import AuthPage from './components/pages/AuthPage';
 import { ToastContainer } from "react-toastify";
 import RecruiterDashboard from './components/dashboard/recruiter/RecruiterDashboard';
-// Note: CandidateDashboard is not used for now to simplify the logic.
-// You can add it back with a proper role system.
+import ProtectedRoute from './components/routes/ProtectedRoute';
+import { isTokenValid } from './utils/auth';
 
 function App() {
   const { token } = useSelector((state) => state.auth);
+  const validToken = isTokenValid(token);
 
   return (
     <>
       <ToastContainer position="bottom-right" autoClose={3000} hideProgressBar={false} />
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route
-          path="/auth"
-          element={token ? <Navigate to="/dashboard" /> : <AuthPage />}
-        />
+       <Route path="/auth" element={<AuthPage />} />
+
+
         <Route
           path="/dashboard/*"
           element={
-            token ? (
-              // For now, we default to the RecruiterDashboard.
-              // A real-world app would check user.role here.
+            <ProtectedRoute>
               <RecruiterDashboard />
-            ) : (
-              <Navigate to="/auth" />
-            )
+            </ProtectedRoute>
           }
         />
       </Routes>

@@ -6,6 +6,7 @@ import logging
 import re
 from datetime import datetime
 from collections import defaultdict
+import asyncio
 
 import docx
 import spacy
@@ -127,21 +128,79 @@ def parse_resume_text(text):
 # --------------------------
 # API Endpoint
 # --------------------------
+@router.post("/parse-jd/")
+async def parse_jd_file(file: UploadFile = File(...)):
+    """
+    Parses a job description and extracts title, required experience, and skills.
+    """
+    logger.info(f"Received JD file: {file.filename}")
+    try:
+        file_content = await file.read()
+
+        if file.filename.lower().endswith(".pdf"):
+            text = extract_text_from_pdf(file_content)
+        elif file.filename.lower().endswith(".docx"):
+            text = extract_text_from_docx(file_content)
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported file format. Upload .pdf or .docx")
+
+        if not text.strip():
+            raise HTTPException(status_code=400, detail="No content found in JD.")
+
+        skills = extract_skills(text)
+        # very basic title/experience guess
+        title = text.splitlines()[0][:80] if text.splitlines() else "Unknown Title"
+        experience = "N/A"
+        for line in text.splitlines():
+            if "year" in line.lower():
+                experience = line.strip()
+                break
+
+        return {
+            "status": "success",
+            "parsed_data": {
+                "title": title,
+                "experience": experience,
+                "skills": ", ".join(skills)
+            }
+        }
+    except Exception as e:
+        logger.exception(f"JD parsing failed: {e}")
+        raise HTTPException(status_code=500, detail=f"JD parsing failed: {str(e)}")
+
+
+# --- Resume Parsing (updated) ---
 @router.post("/parse-resume/")
 async def parse_resume_file(file: UploadFile = File(...)):
     """
-    Parses the content of an uploaded resume (PDF or DOCX).
+    Parses the content of an uploaded resume (PDF or DOCX) and returns normalized fields.
     """
-    file_content = await file.read()
-    if file.filename.lower().endswith(".pdf"):
-        text = extract_text_from_pdf(file_content)
-    elif file.filename.lower().endswith(".docx"):
-        text = extract_text_from_docx(file_content)
-    else:
-        raise HTTPException(status_code=400, detail="Unsupported file format. Upload a .pdf or .docx file.")
+    logger.info(f"Received resume: {file.filename}")
+    try:
+        file_content = await file.read()
 
-    if not text.strip():
-        raise HTTPException(status_code=400, detail="Could not extract text from the file.")
+        if file.filename.lower().endswith(".pdf"):
+            text = extract_text_from_pdf(file_content)
+        elif file.filename.lower().endswith(".docx"):
+            text = extract_text_from_docx(file_content)
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported file format. Upload .pdf or .docx")
 
-    parsed_data = parse_resume_text(text)
-    return {"status": "success", "parsed_data": parsed_data}
+        if not text.strip():
+            raise HTTPException(status_code=400, detail="No text extracted from resume.")
+
+        parsed_data = await asyncio.to_thread(parse_resume_text, text)
+
+        # Normalize to frontend-friendly structure
+        return {
+            "status": "success",
+            "parsed_data": {
+                "name": parsed_data.get("name", "Unknown Candidate"),
+                "designation": (parsed_data.get("experience", [{}])[0].get("company_role")
+                                if parsed_data.get("experience") else "Unknown Role"),
+                "skills": ", ".join(parsed_data.get("skills", []))
+            }
+        }
+    except Exception as e:
+        logger.exception(f"Error while parsing resume: {e}")
+        raise HTTPException(status_code=500, detail=f"Resume parsing failed: {str(e)}")

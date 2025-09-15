@@ -4,6 +4,7 @@ CRUD operations for MongoDB collections.
 from pymongo import errors
 from fastapi import HTTPException
 import logging
+from bson import ObjectId
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +97,19 @@ async def create_job(db, job_data: dict):
         logger.error(f"Unexpected error creating job: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error creating job: {str(e)}")
 
+
+async def update_job(db, job_id, job_data: dict):
+    """
+    Update an existing job by its ID.
+    """
+    try:
+        result = await db["jobs"].update_one({"_id": ObjectId(job_id)}, {"$set": job_data})
+        if result.matched_count == 0:
+            return None
+        return await db["jobs"].find_one({"_id": ObjectId(job_id)})
+    except Exception as e:
+        logger.error(f"Error updating job: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error updating job")
 
 async def get_jobs(db, filter_query: dict = None):
     """

@@ -10,6 +10,11 @@ export const postJob = createAsyncThunk('jobs/postJob', async (jobData) => {
     const response = await apiClient.postJob(jobData);
     return response;
 });
+export const updateJob = createAsyncThunk('jobs/updateJob', async ({ jobId, jobData }) => {
+  const updatedJob = await apiClient.updateJob(jobId, jobData);
+  return updatedJob;
+});
+
 
 const jobSlice = createSlice({
   name: 'jobs',
@@ -34,7 +39,14 @@ const jobSlice = createSlice({
       })
       .addCase(postJob.fulfilled, (state, action) => {
         state.postings.unshift(action.payload);
-      });
+      })
+      .addCase(updateJob.fulfilled, (state, action) => {
+        const index = state.postings.findIndex(job => job._id === action.payload._id);
+        if (index !== -1) {
+        state.postings[index] = action.payload;
+     }
+     });
+
   },
 });
 
